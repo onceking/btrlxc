@@ -37,9 +37,21 @@ module Btrlxc
           end
         end
 
+        # security
+        FileUtils.touch("#{ddir}/.btrlxc")
+
         _run! "lxc-start -dn #{name}"
       end
       ip
+    end
+
+    def destroy(name)
+      dir = "#{Btrlxc::Config.lxc_path}/#{name}"
+      raise "#{dir} is not a directory." unless File.directory?(dir)
+      raise "#{dir} not created by btrlxc." unless File.exist?("#{dir}/.btrlxc")
+
+      _run! "lxc-stop -kn #{name} || :"
+      _run! "btrfs subvolume delete #{dir}"
     end
 
     def hosts

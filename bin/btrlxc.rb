@@ -22,6 +22,11 @@ class Cli < Thor
   def create(source, name)
     puts [name, Btrlxc.create(source, name)].join("\t")
   end
+
+  desc 'destroy', 'create new instance from source'
+  def destroy(name)
+    Btrlxc.destroy(name)
+  end
 end
 
 Cli.start(ARGV)
