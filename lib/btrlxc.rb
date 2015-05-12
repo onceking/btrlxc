@@ -41,6 +41,7 @@ module Btrlxc
         FileUtils.touch("#{ddir}/.btrlxc")
 
         _run! "lxc-start -dn #{name}"
+        _run! "lxc-info -n #{name}"
       end
       ip
     end
