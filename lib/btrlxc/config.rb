@@ -23,6 +23,14 @@ module Btrlxc
         NetAddr::CIDR.create([ifce.addr.ip_address, ifce.netmask.ip_address].join('/'))
       end
 
+      def ssh_pubkey
+        [ssh_key, '.pub'].join('')
+      end
+
+      def ssh_key
+        _env('SSH_KEY', '/var/lib/lxc/id_rsa')
+      end
+
       def lxc_path
         _env('LXC_PATH', '/var/lib/lxc')
       end

@@ -9,6 +9,7 @@ module Btrlxc
     def create(source, name)
       sdir = "#{Btrlxc::Config.snap_path}/#{source}"
       ddir = "#{Btrlxc::Config.lxc_path}/#{name}"
+      root = "#{ddir}/rootfs"
 
       raise "#{ddir} already exists." if File.exist?(ddir)
       unless File.file?("#{sdir}/config") && File.directory?("#{sdir}/rootfs")
@@ -20,11 +21,14 @@ module Btrlxc
         ip = _allocate_ip
 
         _run! "btrfs subvolume snapshot '#{sdir}' '#{ddir}'"
+        # security
+        FileUtils.touch("#{ddir}/.btrlxc")
+
         conf = IniFile.load("#{sdir}/config")['global']
 
         conf.delete('lxc.mount')
         conf.delete('lxc.network.hwaddr')
-        conf['lxc.rootfs']               = "#{ddir}/rootfs"
+        conf['lxc.rootfs']               = "#{root}"
         conf['lxc.utsname']              = name
         conf['lxc.network.type']         = 'veth'
         conf['lxc.network.flags']        = 'up'
@@ -37,8 +41,8 @@ module Btrlxc
           end
         end
 
-        # security
-        FileUtils.touch("#{ddir}/.btrlxc")
+        _config_ssh(root)
+        _config_net(root, name)
 
         _run! "lxc-start -dn #{name}"
         _run! "lxc-info -n #{name}"
@@ -68,6 +72,60 @@ module Btrlxc
 
     private
 
+    def _config_ssh(root)
+      unless (
+        File.exist?(Btrlxc::Config.ssh_key) &&
+        File.exist?(Btrlxc::Config.ssh_pubkey))
+        if File.exist?(Btrlxc::Config.ssh_key)
+          File.unlink(Btrlxc::Config.ssh_key)
+        end
+        if File.exist?(Btrlxc::Config.ssh_pubkey)
+          File.unlink(Btrlxc::Config.ssh_pubkey)
+        end
+
+        _run! "ssh-keygen -f #{Btrlxc::Config.ssh_key} -N ''"
+      end
+
+      Dir["#{root}/home/*"].concat(["#{root}/root"]).each do |d|
+        f = "#{d}/.ssh/authorized_keys"
+        Dir.mkdir("#{d}/.ssh") unless File.directory?("#{d}/.ssh")
+        File.write(f, File.read(Btrlxc::Config.ssh_pubkey))
+
+        File.chmod(0644, f)
+        _chroot!(
+          root,
+          'chown', '-R', File.basename(d), "#{d}/.ssh")
+        _chroot!(
+          root,
+          'passwd', '-d', File.basename(d))
+      end
+    end
+
+    def _config_net(root, hostname)
+      _replace_file("#{root}/etc/hostname", hostname)
+      _replace_file("#{root}/etc/network/interfaces", '''
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+''')
+      _replace_file("#{root}/etc/hosts", "127.0.0.1 localhost #{hostname}")
+      _replace_file("#{root}/etc/sysconfig/network-scripts/ifcfg-eth0", """
+DEVICE=eth0
+BOOTPROTO=static
+ONBOOT=yes
+HOSTNAME=#{hostname}
+NM_CONTROLLED=no
+TYPE=Ethernet
+""")
+
+      _replace_file("#{root}/etc/sysconfig/network", """
+NETWORKING=yes
+HOSTNAME=#{hostname}
+""")
+    end
+
     def _with_lock(&block)
       f = File.join(Btrlxc::Config.lxc_path, 'btrlxc.lock')
       f = File.new(f, File::CREAT, 0644)
@@ -91,6 +149,20 @@ module Btrlxc
       sh = Mixlib::ShellOut.new(cmd, live_stream: $stdout)
       sh.run_command
       sh.error!
+    end
+
+    def _chroot!(root, *args)
+      root << '/' unless root[-1] == '/'
+
+      cmd = "chroot '#{root}'"
+      args.each do |arg|
+        cmd << ' ' << arg.gsub(root, '/')
+      end
+      _run! cmd
+    end
+
+    def _replace_file(path, content)
+      File.write(path, content) if File.exist?(path)
     end
   end
 end
