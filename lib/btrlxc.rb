@@ -84,6 +84,8 @@ module Btrlxc
         end
 
         _run! "ssh-keygen -f #{Btrlxc::Config.ssh_key} -N ''"
+        File.chmod(0644, Btrlxc::Config.ssh_key)
+        File.chmod(0644, Btrlxc::Config.ssh_pubkey)
       end
 
       Dir["#{root}/home/*"].concat(["#{root}/root"]).each do |d|
