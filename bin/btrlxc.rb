@@ -20,6 +20,12 @@ class Cli < Thor
     end
   end
 
+  desc 'get-ip', 'print ip address of a container'
+  def get_ip(name)
+    host = Btrlxc.hosts.find{|k, _| k == name}
+    puts host[1].ip if host
+  end
+
   desc 'create', 'create new instance from source'
   def create(source, name)
     puts [name, Btrlxc.create(source, name)].join("\t")
