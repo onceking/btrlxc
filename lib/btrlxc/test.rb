@@ -4,19 +4,6 @@ require 'btrlxc/config'
 module Btrlxc
   class Test
     class << self
-      def sudo
-        tmp = "#{Btrlxc::Config.lxc_path}/.test-#{SecureRandom.hex}"
-
-        0 == _check_commands(
-          {
-            '/bin/lxc-start -?'=> 'Usage: lxc-start --name=NAME',
-            '/bin/lxc-stop -?' => 'Usage: lxc-stop --name=NAME',
-            "/sbin/btrfs subvolume create #{tmp}" => 'Create subvolume',
-            "/sbin/btrfs subvolume snapshot #{tmp} -r #{tmp}.snap" => 'Create a readonly snapshot',
-            "/sbin/btrfs subvolume delete #{tmp}*" => 'Delete subvolume'
-          })
-      end
-
       def net
         puts "Bridge: #{Btrlxc::Config.bridge}"
         link = Btrlxc::Config.bridge_cidr_link

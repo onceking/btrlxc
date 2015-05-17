@@ -1,5 +1,8 @@
+#! /usr/bin/env ruby
 $:.unshift File.expand_path("../../lib", __FILE__)
 
+require 'dotenv'
+require 'etc'
 require 'thor'
 require 'btrlxc'
 require 'btrlxc/test'
@@ -8,7 +11,6 @@ class Cli < Thor
   desc 'test', 'test environment'
   def test
     Btrlxc::Test.net
-    Btrlxc::Test.sudo
   end
 
   desc 'list', 'list current hosts'
@@ -28,5 +30,9 @@ class Cli < Thor
     Btrlxc.destroy(name)
   end
 end
+
+Dotenv.load(File.join(
+             Dir.home(ENV.key?('SUDO_USER') ? ENV['SUDO_USER'] : Etc.getlogin),
+             '.btrlxc.env'))
 
 Cli.start(ARGV)
