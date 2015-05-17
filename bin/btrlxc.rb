@@ -15,15 +15,16 @@ class Cli < Thor
 
   desc 'list', 'list current hosts'
   def list
-    Btrlxc.hosts.each do |name, cidr|
-      puts [name, cidr.ip].join("\t")
+    Btrlxc.hosts.each do |name, conf|
+      puts "#{name}\t#{conf['lxc.network.ipv4']}"
     end
   end
 
-  desc 'get-ip', 'print ip address of a container'
-  def get_ip(name)
+  desc 'get', 'get attribute of a container'
+  def get_ip(name, attr)
+    attr = ['lxc', attr].join('.') unless attr.start_with?('lxc.')
     host = Btrlxc.hosts.find{|k, _| k == name}
-    puts host[1].ip if host
+    puts host[1][attr] if host
   end
 
   desc 'create', 'create new instance from source'

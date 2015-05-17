@@ -64,9 +64,7 @@ module Btrlxc
       Dir["#{Btrlxc::Config.lxc_path}/*/config"].each do |f|
         name = File.basename(File.dirname(f))
         conf = IniFile.load(f)['global']
-        if conf.key?('lxc.network.ipv4')
-          hs[name] = NetAddr::CIDR.create(conf['lxc.network.ipv4'])
-        end
+        hs[name] = conf
       end
       hs
     end
@@ -141,7 +139,14 @@ HOSTNAME=#{hostname}
     def _allocate_ip
       cidr = Btrlxc::Config.bridge_cidr
       min_ip = NetAddr.ip_to_i(cidr.ip)
-      used_ips = hosts.values.map{|x| NetAddr.ip_to_i(x.ip)}
+      used_ips = hosts.values.map do |host|
+        if host.key?('lxc.network.ipv4')
+          ip = NetAddr::CIDR.create(host['lxc.network.ipv4']).ip
+          NetAddr.ip_to_i(ip)
+        else
+          nil
+        end
+      end.compact
       cidr.range(0).find do |ip|
         i = NetAddr.ip_to_i(ip)
         i > min_ip && !used_ips.include?(i)
