@@ -64,8 +64,9 @@ module Btrlxc
       Dir["#{Btrlxc::Config.lxc_path}/*/config"].each do |f|
         name = File.basename(File.dirname(f))
         conf = IniFile.load(f)['global']
-
-        hs[name] = NetAddr::CIDR.create(conf['lxc.network.ipv4'])
+        if conf.key?('lxc.network.ipv4')
+          hs[name] = NetAddr::CIDR.create(conf['lxc.network.ipv4'])
+        end
       end
       hs
     end
